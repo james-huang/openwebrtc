@@ -1984,6 +1984,7 @@ static void on_component_state_changed(NiceAgent *nice_agent, guint stream_id,
 
     _owr_schedule_with_hash_table((GSourceFunc)emit_ice_state_changed, args);
 
+    g_signal_emit_by_name(session, "component-state-changed", state);
 }
 
 static void on_new_selected_pair(NiceAgent *nice_agent,
