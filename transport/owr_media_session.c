@@ -81,6 +81,7 @@ struct _OwrMediaSessionPrivate {
 enum {
     SIGNAL_ON_NEW_STATS,
     SIGNAL_ON_INCOMING_SOURCE,
+    SIGNAL_COMPONENT_STATE_CHANGED,
 
     LAST_SIGNAL
 };
@@ -271,6 +272,11 @@ static void owr_media_session_class_init(OwrMediaSessionClass *klass)
         G_OBJECT_CLASS_TYPE(klass), G_SIGNAL_RUN_CLEANUP,
         G_STRUCT_OFFSET(OwrMediaSessionClass, on_incoming_source), NULL, NULL,
         NULL, G_TYPE_NONE, 1, OWR_TYPE_REMOTE_MEDIA_SOURCE);
+
+
+    /* callback when ice connections fail */
+    media_session_signals[SIGNAL_COMPONENT_STATE_CHANGED] = g_signal_new("component-state-changed",
+        G_OBJECT_CLASS_TYPE(klass), 0, 0, NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_INT);
 
     gobject_class->set_property = owr_media_session_set_property;
     gobject_class->get_property = owr_media_session_get_property;
