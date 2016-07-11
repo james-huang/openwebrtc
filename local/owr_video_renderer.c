@@ -52,7 +52,7 @@
 GST_DEBUG_CATEGORY_EXTERN(_owrvideorenderer_debug);
 #define GST_CAT_DEFAULT _owrvideorenderer_debug
 
-#define VIDEO_SINK "glimagesink"
+#define VIDEO_SINK "imxeglvivsink"
 
 #define DEFAULT_WIDTH 0
 #define DEFAULT_HEIGHT 0

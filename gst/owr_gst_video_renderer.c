@@ -36,7 +36,7 @@
 #include "owr_media_renderer_private.h"
 #include "owr_private.h"
 
-#define DEFAULT_VIDEO_SINK "glimagesink"
+#define DEFAULT_VIDEO_SINK "imxeglvivsink"
 
 #define OWR_GST_VIDEO_RENDERER_GET_PRIVATE(obj)    (G_TYPE_INSTANCE_GET_PRIVATE((obj), OWR_GST_TYPE_VIDEO_RENDERER, OwrGstVideoRendererPrivate))
 
