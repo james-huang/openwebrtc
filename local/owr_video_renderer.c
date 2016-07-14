@@ -302,8 +302,8 @@ static GstElement *owr_video_renderer_get_element(OwrMediaRenderer *renderer, gu
     renderer_bin = gst_bin_new(bin_name);
     g_free(bin_name);
 
+    convert = gst_element_factory_make("videoconvert", "video-renderer-convert");
     upload = gst_element_factory_make("glupload", "video-renderer-upload");
-    convert = gst_element_factory_make("glcolorconvert", "video-renderer-convert");
 
     balance = gst_element_factory_make("glcolorbalance", "video-renderer-balance");
     g_signal_connect_object(renderer, "notify::disabled", G_CALLBACK(renderer_disabled),
@@ -330,14 +330,14 @@ static GstElement *owr_video_renderer_get_element(OwrMediaRenderer *renderer, gu
             g_object_unref(sink_element);
     }
 
-    gst_bin_add_many(GST_BIN(renderer_bin), upload, convert, balance, flip, sink, NULL);
+    gst_bin_add_many(GST_BIN(renderer_bin), convert, upload, balance, flip, sink, NULL);
 
-    LINK_ELEMENTS(upload, convert);
-    LINK_ELEMENTS(convert, balance);
+    LINK_ELEMENTS(convert, upload);
+    LINK_ELEMENTS(upload, balance);
     LINK_ELEMENTS(balance, flip);
     LINK_ELEMENTS(flip, sink);
 
-    sinkpad = gst_element_get_static_pad(upload, "sink");
+    sinkpad = gst_element_get_static_pad(convert, "sink");
     g_assert(sinkpad);
     ghostpad = gst_ghost_pad_new("sink", sinkpad);
     gst_pad_set_active(ghostpad, TRUE);

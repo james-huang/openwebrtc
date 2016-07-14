@@ -331,7 +331,7 @@ static GstElement *owr_media_source_request_source_default(OwrMediaSource *media
         g_object_set(capsfilter, "caps", caps, NULL);
 
         features = gst_caps_get_features(caps, 0);
-        if (gst_caps_features_contains(features, GST_CAPS_FEATURE_MEMORY_GL_MEMORY)) {
+        if (0) { //gst_caps_features_contains(features, GST_CAPS_FEATURE_MEMORY_GL_MEMORY)) {
             GstElement *glupload;
 
             CREATE_ELEMENT_WITH_ID(glupload, "glupload", "source-glupload", source_id);
