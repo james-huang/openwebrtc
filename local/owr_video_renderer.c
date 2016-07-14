@@ -290,7 +290,7 @@ static GstElement *owr_video_renderer_get_element(OwrMediaRenderer *renderer, gu
     OwrVideoRenderer *video_renderer;
     OwrVideoRendererPrivate *priv;
     GstElement *renderer_bin;
-    GstElement *upload, *convert, *balance, *flip, *sink;
+    GstElement *upload, *convert, *balance, *flip, *download, *sink;
     GstPad *ghostpad, *sinkpad;
     gchar *bin_name;
 
@@ -316,6 +316,8 @@ static GstElement *owr_video_renderer_get_element(OwrMediaRenderer *renderer, gu
     g_signal_connect_object(renderer, "notify::mirror", G_CALLBACK(update_flip_method), flip, 0);
     update_flip_method(renderer, NULL, flip);
 
+    download = gst_element_factory_make("gldownload", "video-renderer-download");
+
     sink = OWR_MEDIA_RENDERER_GET_CLASS(renderer)->get_sink(renderer);
     g_assert(sink);
     g_object_set(sink, "enable-last-sample", FALSE, NULL);
@@ -330,12 +332,13 @@ static GstElement *owr_video_renderer_get_element(OwrMediaRenderer *renderer, gu
             g_object_unref(sink_element);
     }
 
-    gst_bin_add_many(GST_BIN(renderer_bin), convert, upload, balance, flip, sink, NULL);
+    gst_bin_add_many(GST_BIN(renderer_bin), convert, upload, balance, flip, download, sink, NULL);
 
     LINK_ELEMENTS(convert, upload);
     LINK_ELEMENTS(upload, balance);
     LINK_ELEMENTS(balance, flip);
-    LINK_ELEMENTS(flip, sink);
+    LINK_ELEMENTS(flip, download);
+    LINK_ELEMENTS(download, sink);
 
     sinkpad = gst_element_get_static_pad(convert, "sink");
     g_assert(sinkpad);
