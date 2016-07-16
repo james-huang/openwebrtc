@@ -2260,11 +2260,7 @@ static void handle_new_send_payload(OwrTransportAgent *transport_agent, OwrMedia
     g_warn_if_fail(sync_ok);
 
     if (media_type == OWR_MEDIA_TYPE_VIDEO) {
-        GstElement *gldownload, *flip, *queue = NULL, *encoder_capsfilter;
-
-        name = g_strdup_printf("send-input-video-gldownload-%u", stream_id);
-        gldownload = gst_element_factory_make("gldownload", name);
-        g_free(name);
+        GstElement *flip, *queue = NULL, *encoder_capsfilter;
 
         name = g_strdup_printf("send-input-video-flip-%u", stream_id);
         flip = gst_element_factory_make("videoflip", name);
@@ -2297,12 +2293,12 @@ static void handle_new_send_payload(OwrTransportAgent *transport_agent, OwrMedia
         g_object_set(encoder_capsfilter, "caps", caps, NULL);
         gst_caps_unref(caps);
 
-        gst_bin_add_many(GST_BIN(send_input_bin), gldownload, flip, queue, encoder, encoder_capsfilter, payloader, NULL);
+        gst_bin_add_many(GST_BIN(send_input_bin), flip, queue, encoder, encoder_capsfilter, payloader, NULL);
         if (parser) {
             gst_bin_add(GST_BIN(send_input_bin), parser);
-            link_ok &= gst_element_link_many(gldownload, flip, queue, encoder, parser, encoder_capsfilter, payloader, NULL);
+            link_ok &= gst_element_link_many(flip, queue, encoder, parser, encoder_capsfilter, payloader, NULL);
         } else
-            link_ok &= gst_element_link_many(gldownload, flip, queue, encoder, encoder_capsfilter, payloader, NULL);
+            link_ok &= gst_element_link_many(flip, queue, encoder, encoder_capsfilter, payloader, NULL);
 
         link_ok &= gst_element_link_many(payloader, rtp_capsfilter, NULL);
 
@@ -2316,10 +2312,9 @@ static void handle_new_send_payload(OwrTransportAgent *transport_agent, OwrMedia
         sync_ok &= gst_element_sync_state_with_parent(encoder);
         sync_ok &= gst_element_sync_state_with_parent(queue);
         sync_ok &= gst_element_sync_state_with_parent(flip);
-        sync_ok &= gst_element_sync_state_with_parent(gldownload);
 
         name = g_strdup_printf("video_sink_%u_%u", OWR_CODEC_TYPE_NONE, stream_id);
-        sink_pad = gst_element_get_static_pad(gldownload, "sink");
+        sink_pad = gst_element_get_static_pad(flip, "sink");
         add_pads_to_bin_and_transport_bin(sink_pad, send_input_bin,
             transport_agent->priv->transport_bin, name);
         gst_object_unref(sink_pad);

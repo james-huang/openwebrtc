@@ -82,7 +82,7 @@ static void owr_gst_video_renderer_class_init(OwrGstVideoRendererClass *klass)
     g_type_class_add_private(klass, sizeof(OwrGstVideoRendererPrivate));
 
     obj_properties[PROP_SINK] = g_param_spec_object("sink", "sink",
-        "Video sink to use for rendering (default: glimagesink)", G_TYPE_OBJECT,
+        "Video sink to use for rendering (default: imxeglvivsink)", G_TYPE_OBJECT,
         G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
 
     gobject_class->set_property = owr_gst_video_renderer_set_property;
