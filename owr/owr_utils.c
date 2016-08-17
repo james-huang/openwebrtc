@@ -209,7 +209,7 @@ int _owr_rotation_and_mirror_to_video_flip_method(guint rotation, gboolean mirro
 #if defined(__ANDROID__) || (defined(__APPLE__) && TARGET_OS_IPHONE)
     static gint method_table[] = {2, 3, 0, 1, 4, 7, 5, 6};
 #else
-    static gint method_table[] = {0, 1, 2, 3, 5, 6, 4, 7};
+    static gint method_table[] = {0, 1, 2, 3, 4, 7, 5, 6};
 #endif
     g_return_val_if_fail(rotation < 4, 0);
 
