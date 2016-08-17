@@ -382,7 +382,9 @@ static GstElement *owr_media_source_request_source_default(OwrMediaSource *media
     bin_pad = NULL;
     gst_bin_add(GST_BIN(source_pipeline), sink_bin);
     gst_element_sync_state_with_parent(sink_bin);
+    g_message("owr_media_source.c LINK_ELEMENTS(tee, sink_bin);");
     LINK_ELEMENTS(tee, sink_bin);
+    g_message("owr_media_source.c LINK_ELEMENTS(tee, sink_bin); completed");
 
     /* Start up our new bin and link it all */
     srcpad = gst_element_get_static_pad(queue_post, "src");
