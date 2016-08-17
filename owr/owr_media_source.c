@@ -283,7 +283,6 @@ static GstElement *owr_media_source_request_source_default(OwrMediaSource *media
     source_bin = gst_bin_new(bin_name);
     g_free(bin_name);
 
-    g_message("owr_media_source.c create elements");
     CREATE_ELEMENT_WITH_ID(queue_pre, "queue", "source-queue", source_id);
     CREATE_ELEMENT_WITH_ID(capsfilter, "capsfilter", "source-output-capsfilter", source_id);
     CREATE_ELEMENT_WITH_ID(queue_post, "queue", "source-output-queue", source_id);
@@ -318,7 +317,6 @@ static GstElement *owr_media_source_request_source_default(OwrMediaSource *media
 
         s = gst_caps_get_structure(caps, 0);
         if (gst_structure_has_field(s, "framerate")) {
-            g_message("owr_media_source.c framerate");
             gint fps_n = 0, fps_d = 0;
 
             gst_structure_get_fraction(s, "framerate", &fps_n, &fps_d);
@@ -331,25 +329,19 @@ static GstElement *owr_media_source_request_source_default(OwrMediaSource *media
             gst_bin_add(GST_BIN(source_bin), videorate);
         }
         g_object_set(capsfilter, "caps", caps, NULL);
-        g_message("owr_media_source.c get features");
+
         features = gst_caps_get_features(caps, 0);
 
-        g_message("owr_media_source.c create element videoscale");
         CREATE_ELEMENT_WITH_ID(videoscale,  "videoscale", "source-video-scale", source_id);
-        g_message("owr_media_source.c create element video convert");
         CREATE_ELEMENT_WITH_ID(videoconvert, VIDEO_CONVERT, "source-video-convert", source_id);
-        g_message("owr_media_source.c gst bin add many");
         gst_bin_add_many(GST_BIN(source_bin),
                 queue_pre, videoscale, videoconvert, capsfilter, queue_post, NULL);
         if (videorate) {
-            g_message("owr_media_source.c link elements");
             LINK_ELEMENTS(queue_pre, videorate);
             LINK_ELEMENTS(videorate, videoscale);
         } else {
-            g_message("owr_media_source.c link elements");
             LINK_ELEMENTS(queue_pre, videoscale);
         }
-        g_message("owr_media_source.c link elements");
         LINK_ELEMENTS(videoscale, videoconvert);
         LINK_ELEMENTS(videoconvert, capsfilter);
 
@@ -363,12 +355,10 @@ static GstElement *owr_media_source_request_source_default(OwrMediaSource *media
         goto done;
     }
 
-    g_message("owr_media_source.c new source");
     source_name = g_strdup_printf("source-%u", source_id);
     source = g_object_new(OWR_TYPE_INTER_SRC, "name", source_name, NULL);
     g_free(source_name);
 
-    g_message("owr_media_source.c new sink");
     sink_name = g_strdup_printf("sink-%u", source_id);
     sink = g_object_new(OWR_TYPE_INTER_SINK, "name", sink_name, NULL);
     g_free(sink_name);
@@ -377,50 +367,39 @@ static GstElement *owr_media_source_request_source_default(OwrMediaSource *media
     g_weak_ref_set(&OWR_INTER_SINK(sink)->src_srcpad, OWR_INTER_SRC(source)->internal_srcpad);
 
     /* Add and link the inter*sink to the actual source pipeline */
-    g_message("owr_media_source.c Add and link the inter*sink to the actual source pipeline");
     bin_name = g_strdup_printf("source-sink-bin-%u", source_id);
     sink_bin = gst_bin_new(bin_name);
     g_free(bin_name);
-    g_message("owr_media_source.c gst_bin_add_many");
     gst_bin_add_many(GST_BIN(sink_bin), sink, sink_queue, NULL);
-    g_message("owr_media_source.c sync state sink");
     gst_element_sync_state_with_parent(sink);
-    g_message("owr_media_source.c sync state sink_queue");
     gst_element_sync_state_with_parent(sink_queue);
-    g_message("owr_media_source.c LINK_ELEMENTS");
     LINK_ELEMENTS(sink_queue, sink);
     sinkpad = gst_element_get_static_pad(sink_queue, "sink");
     bin_pad = gst_ghost_pad_new("sink", sinkpad);
     gst_object_unref(sinkpad);
     gst_pad_set_active(bin_pad, TRUE);
-    g_message("owr_media_source.c add pad");
     gst_element_add_pad(sink_bin, bin_pad);
     bin_pad = NULL;
-    g_message("owr_media_source.c gst_bin_add");
     gst_bin_add(GST_BIN(source_pipeline), sink_bin);
-    g_message("owr_media_source.c gst_element_sync_state_with_parent sink_bin");
     gst_element_sync_state_with_parent(sink_bin);
     g_message("owr_media_source.c LINK_ELEMENTS(tee, sink_bin);");
     LINK_ELEMENTS(tee, sink_bin);
     g_message("owr_media_source.c LINK_ELEMENTS(tee, sink_bin); completed");
 
     /* Start up our new bin and link it all */
-    g_message("owr_media_source.c Start up our new bin and link it all");
     srcpad = gst_element_get_static_pad(queue_post, "src");
     g_assert(srcpad);
 
-    g_message("owr_media_source.c new bin pad");
     bin_pad = gst_ghost_pad_new("src", srcpad);
     gst_object_unref(srcpad);
     gst_pad_set_active(bin_pad, TRUE);
     gst_element_add_pad(source_bin, bin_pad);
 
-    g_message("owr_media_source.c gst bin add source");
     gst_bin_add(GST_BIN(source_bin), source);
     LINK_ELEMENTS(source, queue_pre);
 
 done:
-    g_message("owr_media_source.c owr_media_source_request_source_default done");
+
     gst_object_unref(source_pipeline);
     gst_object_unref(tee);
 

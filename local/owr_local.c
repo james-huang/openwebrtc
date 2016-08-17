@@ -60,7 +60,6 @@ GST_DEBUG_CATEGORY_EXTERN(_owrlocal_debug);
 
 static GList *get_test_sources(OwrMediaType types)
 {
-    g_message("owr_local.c get test sources");
     static GList *cached_sources = NULL;
     OwrLocalMediaSource *source;
     OwrMediaType media_type;
@@ -89,7 +88,7 @@ static GList *get_test_sources(OwrMediaType types)
             result_list = g_list_append(result_list, source);
         }
     }
-    g_message("owr_local.c finish get test sources");
+
     return result_list;
 }
 
@@ -116,7 +115,6 @@ void owr_get_capture_sources(OwrMediaType types, OwrCaptureSourcesCallback callb
     GClosure *closure;
     GClosure *merger;
 
-    g_message("owr_local.c owr_get_capture_sources");
     g_return_if_fail(callback);
 
     closure = g_cclosure_new(G_CALLBACK(callback), user_data, NULL);
@@ -140,5 +138,4 @@ void owr_get_capture_sources(OwrMediaType types, OwrCaptureSourcesCallback callb
         g_closure_unref(merger);
     } else
         _owr_get_capture_devices(types, closure);
-    g_message("owr_local.c finish owr_get_capture_sources");
 }
