@@ -437,6 +437,8 @@ static void on_caps(GstElement *source, GParamSpec *pspec, OwrMediaSource *media
  */
 static GstElement *owr_local_media_source_request_source(OwrMediaSource *media_source, GstCaps *caps)
 {
+
+    g_message("owr_local_media_source.c owr_local_media_source_request_source");
     OwrLocalMediaSource *local_source;
     OwrLocalMediaSourcePrivate *priv;
     GstElement *source_element = NULL;
@@ -452,9 +454,10 @@ static GstElement *owr_local_media_source_request_source(OwrMediaSource *media_s
     priv = local_source->priv;
 
     /* only create the source bin for this media source once */
-    if ((source_pipeline = _owr_media_source_get_source_bin(media_source)))
+    if ((source_pipeline = _owr_media_source_get_source_bin(media_source))) {
         GST_DEBUG_OBJECT(media_source, "Re-using existing source element/bin");
-    else {
+        g_message("owr_local_media_source.c reuse source bin ");
+    } else {
         OwrMediaType media_type = OWR_MEDIA_TYPE_UNKNOWN;
         OwrSourceType source_type = OWR_SOURCE_TYPE_UNKNOWN;
         GstElement *source, *source_process = NULL, *capsfilter = NULL, *tee;
@@ -466,6 +469,7 @@ static GstElement *owr_local_media_source_request_source(OwrMediaSource *media_s
         GstBus *bus;
         GSource *bus_source;
 
+        g_message("owr_local_media_source.c create source bin");
         event_data = _owr_value_table_new();
         value = _owr_value_table_add(event_data, "start_time", G_TYPE_INT64);
         g_value_set_int64(value, g_get_monotonic_time());
@@ -557,6 +561,7 @@ static GstElement *owr_local_media_source_request_source(OwrMediaSource *media_s
 
             switch (source_type) {
             case OWR_SOURCE_TYPE_CAPTURE:
+                g_message("owr_local_media_source.c create capture elem");
                 CREATE_ELEMENT(source, VIDEO_SRC, "video-source");
                 if (priv->device_index > -1) {
 #if defined(__APPLE__) && !TARGET_IPHONE_SIMULATOR
@@ -565,6 +570,7 @@ static GstElement *owr_local_media_source_request_source(OwrMediaSource *media_s
                     g_object_set(source, "cam-index", priv->device_index, NULL);
 #elif defined(__linux__)
                     tmp = g_strdup_printf("/dev/video%d", priv->device_index);
+                    g_message("owr_local_media_source.c capture elem set source");
                     g_object_set(source, "device", tmp, NULL);
                     g_free(tmp);
 #endif
@@ -609,7 +615,9 @@ static GstElement *owr_local_media_source_request_source(OwrMediaSource *media_s
             _owr_gst_caps_foreach(caps, fix_video_caps_framerate, source_caps);
 #endif
             /* Now see what the device can really produce */
+            g_message("owr_local_media_source.c gst_element_get_static_pad");
             srcpad = gst_element_get_static_pad(source, "src");
+            g_message("owr_local_media_source.c gst_element_set_state");
             gst_element_set_state(source, GST_STATE_READY);
             // device_caps = gst_pad_query_caps(srcpad, source_caps);
             caps = gst_caps_new_simple (
@@ -619,7 +627,9 @@ static GstElement *owr_local_media_source_request_source(OwrMediaSource *media_s
                 "height", G_TYPE_INT, 480,
                 "framerate", GST_TYPE_FRACTION, 30, 1,
                 NULL);
+            g_message("owr_local_media_source.c gst_pad_query_caps finished");
             if (gst_caps_is_empty(device_caps)) {
+                g_message("owr_local_media_source.c capscapscaps");
                 /* Let's see if it works when we drop format constraints (which can be dealt with downsteram) */
                 GstCaps *tmp = source_caps;
                 source_caps = gst_caps_new_empty();
@@ -649,7 +659,7 @@ static GstElement *owr_local_media_source_request_source(OwrMediaSource *media_s
              * is needed for Bowser */
             gst_caps_set_simple(source_caps, "format", G_TYPE_STRING, "NV12", NULL);
 #endif
-
+            g_message("owr_local_media_source.c create caps fitler");
             CREATE_ELEMENT(capsfilter, "capsfilter", "video-source-capsfilter");
             g_object_set(capsfilter, "caps", source_caps, NULL);
             gst_caps_unref(source_caps);
@@ -664,13 +674,16 @@ static GstElement *owr_local_media_source_request_source(OwrMediaSource *media_s
         }
         g_assert(source);
 
+        g_message("owr_local_media_source.c create source pad");
         source_pad = gst_element_get_static_pad(source, "src");
         g_signal_connect(source_pad, "notify::caps", G_CALLBACK(on_caps), media_source);
         gst_object_unref(source_pad);
 
+        g_message("owr_local_media_source.c create source tee");
         CREATE_ELEMENT(tee, "tee", "source-tee");
         g_object_set(tee, "allow-not-linked", TRUE, NULL);
 
+        g_message("owr_local_media_source.c bin add many");
         gst_bin_add_many(GST_BIN(source_pipeline), source, tee, NULL);
 
         /* Many sources don't like reconfiguration and it's pointless
@@ -679,17 +692,23 @@ static GstElement *owr_local_media_source_request_source(OwrMediaSource *media_s
          * We will have to implement reconfiguration differently later by
          * selecting the best caps based on all consumers.
          */
+        g_message("owr_local_media_source.c get static pad");
         sinkpad = gst_element_get_static_pad(tee, "sink");
+        g_message("owr_local_media_source.c add probe");
         gst_pad_add_probe(sinkpad, GST_PAD_PROBE_TYPE_EVENT_UPSTREAM, drop_reconfigure_event, NULL, NULL);
         gst_object_unref(sinkpad);
 
         if (!source)
             GST_ERROR_OBJECT(media_source, "Failed to create source element!");
 
+        g_message("owr_local_media_source.c linking caps filter");
         if (capsfilter) {
+            g_message("owr_local_media_source.c LINK_ELEMENTS(capsfilter, tee);");
             LINK_ELEMENTS(capsfilter, tee);
             if (source_process) {
+                g_message("owr_local_media_source.c LINK_ELEMENTS(source_process, capsfilter)");
                 LINK_ELEMENTS(source_process, capsfilter);
+                g_message("owr_local_media_source.c LINK_ELEMENTS(source, source_process)");
                 LINK_ELEMENTS(source, source_process);
             } else {
                 g_message("owr_local_media_source.c LINK_ELEMENTS(source, capsfilter)");
@@ -697,36 +716,53 @@ static GstElement *owr_local_media_source_request_source(OwrMediaSource *media_s
                 g_message("owr_local_media_source.c LINK_ELEMENTS(source, capsfilter) completed");
             }
         } else if (source_process) {
+            g_message("owr_local_media_source.c LINK_ELEMENTS(source_process, tee)");
             LINK_ELEMENTS(source_process, tee);
+            g_message("owr_local_media_source.c LINK_ELEMENTS(source, source_process)");
             LINK_ELEMENTS(source, source_process);
-        } else
+        } else {
+            g_message("owr_local_media_source.c LINK_ELEMENTS(source, tee)");
             LINK_ELEMENTS(source, tee);
+        }
 
+        g_message("owr_local_media_source.c gst_element_sync_state_with_parent(tee)");
         gst_element_sync_state_with_parent(tee);
-        if (capsfilter)
+        if (capsfilter) {
+            g_message("owr_local_media_source.c gst_element_sync_state_with_parent(capsfilter)");
             gst_element_sync_state_with_parent(capsfilter);
-        if (source_process)
+        }
+        if (source_process) {
+            g_message("owr_local_media_source.c gst_element_sync_state_with_parent(source_process)");
             gst_element_sync_state_with_parent(source_process);
+        }
+         g_message("owr_local_media_source.c gst_element_sync_state_with_parent(source)");
         gst_element_sync_state_with_parent(source);
 
+        g_message("owr_local_media_source.c _owr_media_source_set_source_bin");
         _owr_media_source_set_source_bin(media_source, source_pipeline);
+        g_message("owr_local_media_source.c _owr_media_source_set_source_tee");
         _owr_media_source_set_source_tee(media_source, tee);
         if (gst_element_set_state(source_pipeline, GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE) {
             GST_ERROR("Failed to set local source pipeline %s to playing", GST_OBJECT_NAME(source_pipeline));
             /* FIXME: We should handle this and don't expose the source */
         }
-
+        g_message("owr_local_media_source.c _owr_value_table_add");
         value = _owr_value_table_add(event_data, "end_time", G_TYPE_INT64);
+        g_message("owr_local_media_source.c g_get_monotonic_time");
         g_value_set_int64(value, g_get_monotonic_time());
+        g_message("owr_local_media_source.c OWR_POST_EVENT");
         OWR_POST_EVENT(media_source, LOCAL_SOURCE_STARTED, event_data);
 
+        g_message("owr_local_media_source.c g_signal_connect");
         g_signal_connect(tee, "pad-removed", G_CALLBACK(tee_pad_removed_cb), media_source);
     }
     gst_object_unref(source_pipeline);
 
+    g_message("owr_local_media_source.c request_source");
     source_element = OWR_MEDIA_SOURCE_CLASS(owr_local_media_source_parent_class)->request_source(media_source, caps);
 
 done:
+    g_message("owr_local_media_source.c end owr_local_media_source_request_source");
     return source_element;
 }
 

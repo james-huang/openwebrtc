@@ -150,6 +150,7 @@ static void owr_message_origin_interface_init(OwrMessageOriginInterface *interfa
 /* FIXME: Copy from owr/orw.c without any error handling whatsoever */
 static gboolean bus_call(GstBus *bus, GstMessage *msg, gpointer user_data)
 {
+    // g_message("owr_media_renderer.c bus_call");
     gboolean ret, is_warning = FALSE;
     GstStateChangeReturn change_status;
     gchar *message_type, *debug;
@@ -310,6 +311,7 @@ static void on_caps(GstElement *sink, GParamSpec *pspec, OwrMediaRenderer *media
 
 static void maybe_start_renderer(OwrMediaRenderer *renderer)
 {
+     g_message("owr_media_renderer.c maybe_start_renderer");
     OwrMediaRendererPrivate *priv;
     GstPad *sinkpad, *srcpad;
     GstElement *src;
@@ -349,6 +351,7 @@ static void maybe_start_renderer(OwrMediaRenderer *renderer)
 
 static gboolean set_source(GHashTable *args)
 {
+    g_message("owr_media_renderer.c set_source");
     OwrMediaRenderer *renderer;
     OwrMediaSource *source;
     OwrMediaRendererPrivate *priv;
@@ -398,6 +401,7 @@ end:
     if (source)
         g_object_unref(source);
     g_hash_table_unref(args);
+    g_message("owr_media_renderer.c end set_source");
     return G_SOURCE_REMOVE;
 }
 
@@ -435,6 +439,7 @@ void owr_media_renderer_set_source(OwrMediaRenderer *renderer, OwrMediaSource *s
  */
 void _owr_media_renderer_set_sink(OwrMediaRenderer *renderer, gpointer sink_ptr)
 {
+    g_message("owr_media_renderer.c _owr_media_renderer_set_sink");
     OwrMediaRendererPrivate *priv;
     GstElement *sink = sink_ptr;
 
