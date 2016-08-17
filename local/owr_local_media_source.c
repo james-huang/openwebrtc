@@ -611,8 +611,14 @@ static GstElement *owr_local_media_source_request_source(OwrMediaSource *media_s
             /* Now see what the device can really produce */
             srcpad = gst_element_get_static_pad(source, "src");
             gst_element_set_state(source, GST_STATE_READY);
-            device_caps = gst_pad_query_caps(srcpad, source_caps);
-
+            // device_caps = gst_pad_query_caps(srcpad, source_caps);
+            caps = gst_caps_new_simple (
+                "video/x-raw",
+                "format", G_TYPE_STRING, "YUY2",
+                "width", G_TYPE_INT, 640 ,
+                "height", G_TYPE_INT, 480,
+                "framerate", GST_TYPE_FRACTION, 30, 1,
+                NULL);
             if (gst_caps_is_empty(device_caps)) {
                 /* Let's see if it works when we drop format constraints (which can be dealt with downsteram) */
                 GstCaps *tmp = source_caps;
