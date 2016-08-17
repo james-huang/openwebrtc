@@ -58,6 +58,7 @@ GST_DEBUG_CATEGORY_EXTERN(_owrvideorenderer_debug);
 #define DEFAULT_HEIGHT 0
 #define DEFAULT_MAX_FRAMERATE 0.0
 #define DEFAULT_ROTATION 0
+#define DEFAULT_CROP 0
 #define DEFAULT_MIRROR FALSE
 #define DEFAULT_TAG NULL
 
@@ -74,6 +75,10 @@ enum {
     PROP_MAX_FRAMERATE,
     PROP_ROTATION,
     PROP_MIRROR,
+    PROP_TOP_CROP,
+    PROP_BOTTOM_CROP,
+    PROP_LEFT_CROP,
+    PROP_RIGHT_CROP,
     PROP_TAG,
     N_PROPERTIES
 };
@@ -96,6 +101,10 @@ struct _OwrVideoRendererPrivate {
     gdouble max_framerate;
     gint rotation;
     gboolean mirror;
+    guint crop_top;
+    guint crop_bottom;
+    guint crop_left;
+    guint crop_right;
     gchar *tag;
 };
 
@@ -140,6 +149,22 @@ static void owr_video_renderer_class_init(OwrVideoRendererClass *klass)
         "Whether the video should be mirrored around the y-axis", DEFAULT_MIRROR,
         G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
 
+    obj_properties[PROP_TOP_CROP] = g_param_spec_uint("crop-top", "crop-top",
+        "Pixels to crop from the top", 0, G_MAXUINT, DEFAULT_CROP,
+        G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+
+    obj_properties[PROP_BOTTOM_CROP] = g_param_spec_uint("crop-bottom", "crop-bottom",
+        "Pixels to crop from the bottom", 0, G_MAXUINT, DEFAULT_CROP,
+        G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+
+    obj_properties[PROP_LEFT_CROP] = g_param_spec_uint("crop-left", "crop-left",
+        "Pixels to crop from the left", 0, G_MAXUINT, DEFAULT_CROP,
+        G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+
+    obj_properties[PROP_RIGHT_CROP] = g_param_spec_uint("crop-right", "crop-right",
+        "Pixels to crop from the right", 0, G_MAXUINT, DEFAULT_CROP,
+        G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+
     obj_properties[PROP_TAG] = g_param_spec_string("tag", "tag",
         "Tag referencing the window widget into which to draw video (default: NULL, create a new window)",
         DEFAULT_TAG, G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
@@ -167,6 +192,10 @@ static void owr_video_renderer_init(OwrVideoRenderer *renderer)
     priv->tag = DEFAULT_TAG;
     priv->rotation = DEFAULT_ROTATION;
     priv->mirror = DEFAULT_MIRROR;
+    priv->crop_top = DEFAULT_CROP;
+    priv->crop_bottom = DEFAULT_CROP;
+    priv->crop_left = DEFAULT_CROP;
+    priv->crop_right = DEFAULT_CROP;
 }
 
 static void owr_video_renderer_set_property(GObject *object, guint property_id,
@@ -192,6 +221,18 @@ static void owr_video_renderer_set_property(GObject *object, guint property_id,
         break;
     case PROP_MIRROR:
         priv->mirror = g_value_get_boolean(value);
+        break;
+    case PROP_TOP_CROP:
+        priv->crop_top = g_value_get_uint(value);
+        break;
+    case PROP_BOTTOM_CROP:
+        priv->crop_bottom = g_value_get_uint(value);
+        break;
+    case PROP_LEFT_CROP:
+        priv->crop_left = g_value_get_uint(value);
+        break;
+    case PROP_RIGHT_CROP:
+        priv->crop_right = g_value_get_uint(value);
         break;
     case PROP_TAG:
         g_free(priv->tag);
@@ -229,6 +270,18 @@ static void owr_video_renderer_get_property(GObject *object, guint property_id,
         break;
     case PROP_MIRROR:
         g_value_set_boolean(value, priv->mirror);
+        break;
+    case PROP_TOP_CROP:
+        g_value_set_uint(value, priv->crop_top);
+        break;
+    case PROP_BOTTOM_CROP:
+        g_value_set_uint(value, priv->crop_bottom);
+        break;
+    case PROP_LEFT_CROP:
+        g_value_set_uint(value, priv->crop_left);
+        break;
+    case PROP_RIGHT_CROP:
+        g_value_set_uint(value, priv->crop_right);
         break;
     case PROP_TAG:
         g_value_set_string(value, priv->tag);
@@ -270,6 +323,19 @@ static void renderer_disabled(OwrMediaRenderer *renderer, GParamSpec *pspec, Gst
     g_object_set(balance, "saturation", (gdouble)!disabled, "brightness", (gdouble)-disabled, NULL);
 }
 
+static void update_crop_method(OwrMediaRenderer *renderer, GParamSpec *pspec, GstElement *crop)
+{
+    guint top = 0, bottom = 0, left = 0, right = 0;
+
+    g_return_if_fail(OWR_IS_MEDIA_RENDERER(renderer));
+    g_return_if_fail(G_IS_PARAM_SPEC(pspec) || !pspec);
+    g_return_if_fail(GST_IS_ELEMENT(crop));
+
+    g_object_get(renderer, "crop-top", &top, "crop-bottom", &bottom, "crop-left", &left,
+                 "crop-right", &right, NULL);
+    g_object_set(crop, "top", top, "bottom", bottom, "left", left, "right", right, NULL);
+}
+
 static void update_flip_method(OwrMediaRenderer *renderer, GParamSpec *pspec, GstElement *flip)
 {
     guint rotation = 0;
@@ -290,7 +356,7 @@ static GstElement *owr_video_renderer_get_element(OwrMediaRenderer *renderer, gu
     OwrVideoRenderer *video_renderer;
     OwrVideoRendererPrivate *priv;
     GstElement *renderer_bin;
-    GstElement *convert, *sink;
+    GstElement *convert, *sink, *flip, *crop;
     GstPad *ghostpad, *sinkpad;
     gchar *bin_name;
 
@@ -303,6 +369,15 @@ static GstElement *owr_video_renderer_get_element(OwrMediaRenderer *renderer, gu
     g_free(bin_name);
 
     convert = gst_element_factory_make("videoconvert", "video-renderer-convert");
+    flip = gst_element_factory_make("videoflip", "video-flip");
+    crop = gst_element_factory_make("videocrop", "video-crop");
+
+    g_signal_connect_object(renderer, "notify::rotation", G_CALLBACK(update_flip_method), flip, 0);
+    g_signal_connect_object(renderer, "notify::mirror", G_CALLBACK(update_flip_method), flip, 0);
+    g_signal_connect_object(renderer, "notify::crop-top", G_CALLBACK(update_crop_method), crop, 0);
+    g_signal_connect_object(renderer, "notify::crop-bottom", G_CALLBACK(update_crop_method), crop, 0);
+    g_signal_connect_object(renderer, "notify::crop-left", G_CALLBACK(update_crop_method), crop, 0);
+    g_signal_connect_object(renderer, "notify::crop-right", G_CALLBACK(update_crop_method), crop, 0);
 
     sink = OWR_MEDIA_RENDERER_GET_CLASS(renderer)->get_sink(renderer);
     g_assert(sink);
@@ -318,10 +393,12 @@ static GstElement *owr_video_renderer_get_element(OwrMediaRenderer *renderer, gu
             g_object_unref(sink_element);
     }
 
-    gst_bin_add_many(GST_BIN(renderer_bin), convert, sink, NULL);
+    gst_bin_add_many(GST_BIN(renderer_bin), crop, flip, convert, sink, NULL);
+    LINK_ELEMENTS(crop, flip);
+    LINK_ELEMENTS(flip, convert);
     LINK_ELEMENTS(convert, sink);
 
-    sinkpad = gst_element_get_static_pad(convert, "sink");
+    sinkpad = gst_element_get_static_pad(crop, "sink");
     g_assert(sinkpad);
     ghostpad = gst_ghost_pad_new("sink", sinkpad);
     gst_pad_set_active(ghostpad, TRUE);
