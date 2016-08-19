@@ -602,46 +602,39 @@ static GstElement *owr_local_media_source_request_source(OwrMediaSource *media_s
 
             /* First try to see if we can just get the format we want directly */
 
-            source_caps = gst_caps_new_empty();
-#if GST_CHECK_VERSION(1, 5, 0)
-            gst_caps_foreach(caps, fix_video_caps_framerate, source_caps);
-#else
-            _owr_gst_caps_foreach(caps, fix_video_caps_framerate, source_caps);
-#endif
-            /* Now see what the device can really produce */
-            srcpad = gst_element_get_static_pad(source, "src");
-            gst_element_set_state(source, GST_STATE_READY);
-            // device_caps = gst_pad_query_caps(srcpad, source_caps);
-            caps = gst_caps_new_simple (
-                "video/x-raw",
-                "format", G_TYPE_STRING, "YUY2",
-                "width", G_TYPE_INT, 640 ,
-                "height", G_TYPE_INT, 480,
-                "framerate", GST_TYPE_FRACTION, 30, 1,
-                NULL);
-            if (gst_caps_is_empty(device_caps)) {
-                /* Let's see if it works when we drop format constraints (which can be dealt with downsteram) */
-                GstCaps *tmp = source_caps;
-                source_caps = gst_caps_new_empty();
-#if GST_CHECK_VERSION(1, 5, 0)
-                gst_caps_foreach(tmp, fix_video_caps_format, source_caps);
-#else
-                _owr_gst_caps_foreach(tmp, fix_video_caps_format, source_caps);
-#endif
-                gst_caps_unref(tmp);
+//             source_caps = gst_caps_new_empty();
+// #if GST_CHECK_VERSION(1, 5, 0)
+//             gst_caps_foreach(caps, fix_video_caps_framerate, source_caps);
+// #else
+//             _owr_gst_caps_foreach(caps, fix_video_caps_framerate, source_caps);
+// #endif
+//             /* Now see what the device can really produce */
+//             srcpad = gst_element_get_static_pad(source, "src");
+//             gst_element_set_state(source, GST_STATE_READY);
+//             device_caps = gst_pad_query_caps(srcpad, source_caps);
+//             if (gst_caps_is_empty(device_caps)) {
+//                 /* Let's see if it works when we drop format constraints (which can be dealt with downsteram) */
+//                 GstCaps *tmp = source_caps;
+//                 source_caps = gst_caps_new_empty();
+// #if GST_CHECK_VERSION(1, 5, 0)
+//                 gst_caps_foreach(tmp, fix_video_caps_format, source_caps);
+// #else
+//                 _owr_gst_caps_foreach(tmp, fix_video_caps_format, source_caps);
+// #endif
+//                 gst_caps_unref(tmp);
 
-                gst_caps_unref(device_caps);
-                device_caps = gst_pad_query_caps(srcpad, source_caps);
+//                 gst_caps_unref(device_caps);
+//                 device_caps = gst_pad_query_caps(srcpad, source_caps);
 
-                if (gst_caps_is_empty(device_caps)) {
-                    /* Accepting any format didn't work, we're going to hope that scaling fixes it */
-                    CREATE_ELEMENT(source_process, "videoscale", "video-source-scale");
-                    gst_bin_add(GST_BIN(source_pipeline), source_process);
-                }
-            }
+//                 if (gst_caps_is_empty(device_caps)) {
+//                     /* Accepting any format didn't work, we're going to hope that scaling fixes it */
+//                     CREATE_ELEMENT(source_process, "videoscale", "video-source-scale");
+//                     gst_bin_add(GST_BIN(source_pipeline), source_process);
+//                 }
+//             }
 
-            gst_caps_unref(device_caps);
-            gst_object_unref(srcpad);
+//             gst_caps_unref(device_caps);
+//             gst_object_unref(srcpad);
 
 #if defined(__APPLE__) && TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
             /* Force NV12 on iOS else the source can negotiate BGRA
@@ -649,7 +642,13 @@ static GstElement *owr_local_media_source_request_source(OwrMediaSource *media_s
              * is needed for Bowser */
             gst_caps_set_simple(source_caps, "format", G_TYPE_STRING, "NV12", NULL);
 #endif
-
+            source_caps =  gst_caps_new_simple (
+                    "video/x-raw",
+                    "format", G_TYPE_STRING, "YUY2",
+                    "width", G_TYPE_INT, 640 ,
+                    "height", G_TYPE_INT, 480,
+                    "framerate", GST_TYPE_FRACTION, 30, 1,
+                    NULL);
             CREATE_ELEMENT(capsfilter, "capsfilter", "video-source-capsfilter");
             g_object_set(capsfilter, "caps", source_caps, NULL);
             gst_caps_unref(source_caps);
@@ -671,7 +670,7 @@ static GstElement *owr_local_media_source_request_source(OwrMediaSource *media_s
         CREATE_ELEMENT(tee, "tee", "source-tee");
         g_object_set(tee, "allow-not-linked", TRUE, NULL);
 
-        gst_bin_add_many(GST_BIN(source_pipeline), source, tee, NULL);
+        gst_bin_add_many(GST_BIN(source_pipeline), source, capsfilter, tee, NULL);
 
         /* Many sources don't like reconfiguration and it's pointless
          * here anyway right now. No need to reconfigure whenever something
@@ -681,6 +680,8 @@ static GstElement *owr_local_media_source_request_source(OwrMediaSource *media_s
          */
         sinkpad = gst_element_get_static_pad(tee, "sink");
         gst_pad_add_probe(sinkpad, GST_PAD_PROBE_TYPE_EVENT_UPSTREAM, drop_reconfigure_event, NULL, NULL);
+        gst_pad_use_fixed_caps(sinkpad);
+        gst_pad_set_caps (sinkpad, source_caps);
         gst_object_unref(sinkpad);
 
         if (!source)
