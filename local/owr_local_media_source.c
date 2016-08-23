@@ -58,7 +58,8 @@ GST_DEBUG_CATEGORY_EXTERN(_owrlocalmediasource_debug);
 
 #if defined(__APPLE__) && !TARGET_IPHONE_SIMULATOR
 #define AUDIO_SRC "osxaudiosrc"
-#define VIDEO_SRC "avfvideosrc"
+// #define VIDEO_SRC "avfvideosrc"
+#define VIDEO_SRC "qtkitvideosrc"
 
 #elif defined(__ANDROID__)
 #define AUDIO_SRC "openslessrc"
