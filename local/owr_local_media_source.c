@@ -66,7 +66,7 @@ GST_DEBUG_CATEGORY_EXTERN(_owrlocalmediasource_debug);
 
 #elif defined(__linux__)
 #define AUDIO_SRC  "pulsesrc"
-#define VIDEO_SRC  "v4l2src"
+#define VIDEO_SRC  "imxv4l2videosrc"
 
 #else
 #define AUDIO_SRC  "audiotestsrc"
