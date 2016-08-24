@@ -271,9 +271,6 @@ static GstElement *owr_media_source_request_source_default(OwrMediaSource *media
     guint source_id;
     gchar *sink_name, *source_name;
 
-    g_message("owr_media_source_request_source_default caps: %" GST_PTR_FORMAT, caps);
-    g_message(gst_caps_to_string(caps));
-
     g_return_val_if_fail(media_source->priv->source_bin, NULL);
     g_return_val_if_fail(media_source->priv->source_tee, NULL);
 
@@ -331,7 +328,6 @@ static GstElement *owr_media_source_request_source_default(OwrMediaSource *media
             gst_structure_remove_field(s, "framerate");
             gst_bin_add(GST_BIN(source_bin), videorate);
         }
-        gst_caps_set_simple(caps, "format", G_TYPE_STRING, "YUY2", NULL);
         g_object_set(capsfilter, "caps", caps, NULL);
 
         features = gst_caps_get_features(caps, 0);
@@ -377,41 +373,18 @@ static GstElement *owr_media_source_request_source_default(OwrMediaSource *media
     gst_bin_add_many(GST_BIN(sink_bin), sink, sink_queue, NULL);
     gst_element_sync_state_with_parent(sink);
     gst_element_sync_state_with_parent(sink_queue);
-    // if (media_type == OWR_MEDIA_TYPE_VIDEO) {
-    //     GstCaps *cam_caps0 = gst_caps_new_simple (
-    //         "video/x-raw",
-    //         "format", G_TYPE_STRING, "YUY2",
-    //         "width", G_TYPE_INT, 640 ,
-    //         "height", G_TYPE_INT, 480,
-    //         "framerate", GST_TYPE_FRACTION, 30, 1,
-    //         // "pixel-aspect-ratio", GST_TYPE_FRACTION, 1, 1,
-    //         // "interlace-mode", G_TYPE_STRING, "progressive",
-    //         NULL);
-    //     gst_element_link_filtered(sink_queue, sink, cam_caps0);
-    // } else {
     LINK_ELEMENTS(sink_queue, sink);
-    // }
     sinkpad = gst_element_get_static_pad(sink_queue, "sink");
     bin_pad = gst_ghost_pad_new("sink", sinkpad);
     gst_object_unref(sinkpad);
     gst_pad_set_active(bin_pad, TRUE);
     gst_element_add_pad(sink_bin, bin_pad);
-    if (media_type == OWR_MEDIA_TYPE_VIDEO) {
-        GstCaps *cam_caps1 = gst_caps_new_simple (
-            "video/x-raw",
-            "format", G_TYPE_STRING, "YUY2",
-            "width", G_TYPE_INT, 640 ,
-            "height", G_TYPE_INT, 480,
-            "framerate", GST_TYPE_FRACTION, 30, 1,
-            // "pixel-aspect-ratio", GST_TYPE_FRACTION, 1, 1,
-            // "interlace-mode", G_TYPE_STRING, "progressive",
-            NULL);
-        gst_pad_use_fixed_caps(bin_pad);
-        gst_pad_set_caps (bin_pad, cam_caps1);
-    }
     bin_pad = NULL;
     gst_bin_add(GST_BIN(source_pipeline), sink_bin);
     gst_element_sync_state_with_parent(sink_bin);
+    g_message("owr_media_source.c LINK_ELEMENTS(tee, sink_bin);");
+    LINK_ELEMENTS(tee, sink_bin);
+    g_message("owr_media_source.c LINK_ELEMENTS(tee, sink_bin); completed");
 
     /* Start up our new bin and link it all */
     srcpad = gst_element_get_static_pad(queue_post, "src");
@@ -421,38 +394,9 @@ static GstElement *owr_media_source_request_source_default(OwrMediaSource *media
     gst_object_unref(srcpad);
     gst_pad_set_active(bin_pad, TRUE);
     gst_element_add_pad(source_bin, bin_pad);
-    if (media_type == OWR_MEDIA_TYPE_VIDEO) {
-        GstCaps *cam_caps2 = gst_caps_new_simple (
-            "video/x-raw",
-            "format", G_TYPE_STRING, "YUY2",
-            "width", G_TYPE_INT, 640 ,
-            "height", G_TYPE_INT, 480,
-            "framerate", GST_TYPE_FRACTION, 30, 1,
-            // "pixel-aspect-ratio", GST_TYPE_FRACTION, 1, 1,
-            // "interlace-mode", G_TYPE_STRING, "progressive",
-            NULL);
-        gst_pad_use_fixed_caps(bin_pad);
-        gst_pad_set_caps (bin_pad, cam_caps2);
-    }
 
     gst_bin_add(GST_BIN(source_bin), source);
     LINK_ELEMENTS(source, queue_pre);
-    g_message("owr_media_source.c LINK_ELEMENTS(tee, sink_bin);");
-    // if (media_type == OWR_MEDIA_TYPE_VIDEO) {
-    //     GstCaps *cam_caps1 = gst_caps_new_simple (
-    //         "video/x-raw",
-    //         "format", G_TYPE_STRING, "YUY2",
-    //         "width", G_TYPE_INT, 640 ,
-    //         "height", G_TYPE_INT, 480,
-    //         "framerate", GST_TYPE_FRACTION, 30, 1,
-    //         // "pixel-aspect-ratio", GST_TYPE_FRACTION, 1, 1,
-    //         // "interlace-mode", G_TYPE_STRING, "progressive",
-    //         NULL);
-    //     gst_element_link_filtered(tee, sink_bin, cam_caps1);
-    // } else {
-    LINK_ELEMENTS(tee, sink_bin);
-    // }
-    g_message("owr_media_source.c LINK_ELEMENTS(tee, sink_bin); completed");
 
 done:
 
